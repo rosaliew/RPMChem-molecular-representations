@@ -177,7 +177,6 @@ def train(
     model_dir,
     train_jsonl,
     valid_jsonl,
-    tokenizer_name,
     save_dir,
     max_seq_len,
     batch_size,

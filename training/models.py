@@ -4,6 +4,7 @@ import json
 import math
 import os
 from dataclasses import dataclass
+from typing import Optional
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -22,9 +23,9 @@ class LlamaArgs: # following some aspects of this https://github.com/ml-explore/
     num_attention_heads: int
     rms_norm_eps: float
     vocab_size: int
-    head_dim = None
-    max_position_embeddings = None
-    num_key_value_heads = None
+    head_dim: Optional[int] = None # need type hinting here
+    max_position_embeddings: Optional[int] = None
+    num_key_value_heads: Optional[int] = None
     attention_bias: bool = False
     mlp_bias: bool = False
     rope_theta: float = 10000.0
@@ -48,14 +49,15 @@ class LlamaArgs: # following some aspects of this https://github.com/ml-explore/
 
 # look https://github.com/ml-explore/mlx-lm/blob/834fac934c4e04de9b3d723e2b9287a2c60cfd4a/mlx_lm/tuner/lora.py#L11
 class LoRAInfusedLinear(nn.Module):
-        def __init__(
-        self,
-        input_dims,
-        output_dims,
-        r=8,
-        dropout=0.0,
-        scale=20.0,
-        bias=False):
+    def __init__(
+            self,
+            input_dims,
+            output_dims,
+            r=8,
+            dropout=0.0,
+            scale=20.0,
+            bias=False):
+            
             
         super().__init__() 
         # this is finally very pytorch-ish
@@ -157,7 +159,7 @@ class MLP(nn.Module):
         return self.down_proj(nn.silu(self.gate_proj(x)) * self.up_proj(x)) # same as llama SwishGelu thing defined by apples mlx (https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/models/activations.py#L10)
 
 class TransformerBlock(nn.Module): # inspired from (but modified) https://github.com/ml-explore/mlx-lm/blob/834fac934c4e04de9b3d723e2b9287a2c60cfd4a/mlx_lm/models/llama.py#L13
-     def __init__(self, args):
+    def __init__(self, args):
         super().__init__()
         self.self_attn = Attention(args)
         self.mlp = MLP(args)
@@ -245,7 +247,7 @@ def load_pretrained_model(model_dir):
                 return False
             return f"{path}.scales" in weights
 
-        nn.quantize(model,group_size=quantization["group_size"],bits=quantization["bits"],mode=quantization.get("mode", "affine") class_predicate=class_predicate)
+        nn.quantize(model,group_size=quantization["group_size"],bits=quantization["bits"],mode=quantization.get("mode", "affine"), class_predicate=class_predicate)
 
     model.load_weights(list(weights.items()), strict=True)
     model.eval()
