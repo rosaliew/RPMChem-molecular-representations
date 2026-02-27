@@ -36,7 +36,11 @@ def insert_default_system_prompt(chat_template, system_prompt): # puts a new sys
 
     return chat_template
 
+
+# some of this might not be used anymore but was done previously 
 def patch_text_file(path, system_prompt):
+    if not os.path.exists(path):
+        return False
     with open(path, "r", encoding="utf-8") as f:
         original = f.read()
     updated = insert_default_system_prompt(original, system_prompt)
@@ -47,10 +51,15 @@ def patch_text_file(path, system_prompt):
     return True
 
 def patch_tokenizer_config(tokenizer_config_path, system_prompt):
+    if not os.path.exists(tokenizer_config_path):
+        return False
+
     with open(tokenizer_config_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     chat_template = data.get("chat_template")
+    if not isinstance(chat_template, str):
+        return False
 
     updated = insert_default_system_prompt(chat_template, system_prompt)
     if updated == chat_template:
