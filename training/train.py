@@ -392,7 +392,7 @@ if __name__ == "__main__":
         save_dir="adapters_manual",
         max_seq_len=5000,
         batch_size=1,
-        iters=6000,
+        iters=1000,
         eval_every=100,
         eval_batches=125,
         save_every=9999,
