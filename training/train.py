@@ -135,7 +135,7 @@ def evaluate(model, loader, max_batches): # load in the model, dataloader, and t
     if not losses:
         return float("nan")
     else:
-        sum(losses) / len(losses)
+        return sum(losses) / len(losses)
 
 
 def copy_tokenizer_artifacts_from_orig_model(tokenizer_path, save_dir):
@@ -345,19 +345,22 @@ def train(
             train_steps.append(step)
             train_losses.append(loss.item())
 
-        if step % eval_every == 0:
-            val_loss = evaluate(model, valid_loader, eval_batches)
-            msg = f"step={step} val_loss={val_loss:.6f}"
-            print(msg)
-            log_file.write(msg + "\n")
-            log_file.flush()
+        if step % eval_every == 0 and step != 0: 
+            try:
+                val_loss = evaluate(model, valid_loader, eval_batches)
+                msg = f"step={step} val_loss={val_loss:.6f}"
+                print(msg)
+                log_file.write(msg + "\n")
+                log_file.flush()
 
-            valid_losses.append(val_loss)
-            valid_steps.append(step)
-            plt.clf()
-            plt.plot(valid_steps, valid_losses, label="val")
-            plt.legend()
-            plt.savefig("train_curr_temp") # real time plotting
+                valid_losses.append(val_loss)
+                valid_steps.append(step)
+                plt.clf()
+                plt.plot(valid_steps, valid_losses, label="val")
+                plt.legend()
+                plt.savefig("train_curr_temp") # real time plotting
+            except:
+                print(f"stmh failed here")
 
         if step % save_every == 0:
             ckpt = f"{save_dir}/lora_step_{step:07d}.safetensors" # adding zeros so its a consistent form
@@ -387,15 +390,15 @@ def train(
 if __name__ == "__main__":
     train(
         model_dir="mlx-community/Meta-Llama-3.1-8B-Instruct-4bit",
-        train_jsonl="datasets/current_to_run/train.jsonl",
-        valid_jsonl="datasets/current_to_run/valid.jsonl",
+        train_jsonl="/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/train_IMPUTED.jsonl",
+        valid_jsonl="/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/valid_IMPUTED.jsonl",
         save_dir="adapters_manual",
         max_seq_len=5000,
         batch_size=1,
-        iters=1000,
-        eval_every=100,
+        iters=5000,
+        eval_every=250,
         eval_batches=125,
-        save_every=9999,
+        save_every=250,
         apply_chat_template=True,
         mask_prompt=True,
         system_prompt=DEFAULT_SYSTEM_PROMPT,
@@ -407,3 +410,6 @@ if __name__ == "__main__":
         num_layers=-1,
         seed=42,
     )
+
+
+
