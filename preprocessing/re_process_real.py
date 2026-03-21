@@ -40,6 +40,10 @@ class ReprocessorReal:
                     refined_data_singlet['prompt'] = d['prompt']
                     refined_data_singlet['completion'] = d['completion']
                     refined_data.append(refined_data_singlet)
+                    txt_id = d.get("textbook_id")
+
+                    if txt_id is not None:
+                        refined_data_singlet['textbook_id'] = txt_id
                 except:
                     print(f"failed when processing sample {i}, plz check")
             else:
@@ -58,21 +62,26 @@ class ReprocessorReal:
         train_data = data_to_split[:int((1-test_prop)*len(self.refined_data))]
         test_data = data_to_split[int((1-test_prop)*len(self.refined_data)):]
 
-        with open(f'datasets/current_to_run/train.jsonl', "w", encoding="utf-8") as f:  
+        train_string = f"datasets/e2e_artifacts/train_noimpute_{self.datestamp}.jsonl"
+        test_string = f"datasets/e2e_artifacts/valid_noimpute_{self.datestamp}.jsonl"
+
+        with open(train_string, "w", encoding="utf-8") as f:  
             for d in train_data:
                 f.write(json.dumps(d))
                 f.write("\n")
 
-        with open(f'datasets/current_to_run/valid.jsonl', "w", encoding="utf-8") as f:  
+        with open(test_string, "w", encoding="utf-8") as f:  
             for d in test_data:
                 f.write(json.dumps(d))
                 f.write("\n")
                 
         print("Done processing")
 
+        return train_string, test_string
+
 
         
 if __name__ == "__main__":
-    rp = ReprocessorReal("/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/processed_real/mega_joined.jsonl")
+    rp = ReprocessorReal("datasets/processed_real/mega_joined_3txt_with_textbook_ids.jsonl")
     rp.clean_jsons()
     rp.split_data()

@@ -14,16 +14,7 @@ from openai import OpenAI
 from pdf2image import convert_from_path
 
 
-pdf1 = "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/pdfs/Atkins_ Physical Chemistry 11e.pdf"
-pdf2 = "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/pdfs/Solutions Manual - Atkins Physical Chemistry 11th Ed.pdf"
 
-pdf1_json = "datasets/processed_real/pdf1_json.json"
-pdf2_json = "datasets/processed_real/pdf2_json.json"
-
-# in next iteration we dont need this
-##initial_page = 10
-##final_page = 755
-# in next iteration we dont need this
 
 max_pages_per_item = 3  # max num of consecutive pages to look at 
 
@@ -255,13 +246,22 @@ def extract_items_from_pdf(pdf_path, output_path, prompt_builder, should_scan_pa
     logger.info(f"Saved {len(records)} records to {output_path}")
 
 
-pdf1_text_extractor = PdfExtractor(pdf1)
+if __name__ == "__main__":
 
-extract_items_from_pdf(
-    pdf1,
-    pdf1_json,
-    prompt_pdf1_questions,
-    should_scan_page=lambda page_num: should_scan_pdf1_page(page_num, pdf1_text_extractor),
-)
-extract_items_from_pdf(pdf2, pdf2_json, prompt_pdf2_answers)
+
+    pdf1 = "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/pdfs/Atkins_ Physical Chemistry 11e.pdf"
+    pdf2 = "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/pdfs/Solutions Manual - Atkins Physical Chemistry 11th Ed.pdf"
+
+    pdf1_json = "datasets/processed_real/pdf1_json.json"
+    pdf2_json = "datasets/processed_real/pdf2_json.json"
+
+    pdf1_text_extractor = PdfExtractor(pdf1)
+
+    extract_items_from_pdf(
+        pdf1,
+        pdf1_json,
+        prompt_pdf1_questions,
+        should_scan_page=lambda page_num: should_scan_pdf1_page(page_num, pdf1_text_extractor),
+    )
+    extract_items_from_pdf(pdf2, pdf2_json, prompt_pdf2_answers)
 

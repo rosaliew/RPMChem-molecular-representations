@@ -327,3 +327,22 @@ if __name__ == "__main__":
     m2 = "/Users/michaelmurray/.lmstudio/models/personal/fuse_model_8b_qlora_manual_NEW"
     mc.compare(m1,m2)
     mc.save_results()
+
+
+""" 209/403
+                 metric   mean    std
+  bert_precision_model1 0.5031 0.0935
+  bert_precision_model2 0.6418 0.1066
+     bert_recall_model1 0.6182 0.0745
+     bert_recall_model2 0.5751 0.1403
+         bert_f1_model1 0.5512 0.0790
+         bert_f1_model2 0.5991 0.1144
+rougeL_precision_model1 0.0958 0.0796
+rougeL_precision_model2 0.3987 0.2733
+   rougeL_recall_model1 0.4928 0.2056
+   rougeL_recall_model2 0.2497 0.2369
+       rougeL_f1_model1 0.1422 0.0955
+       rougeL_f1_model2 0.2285 0.1888
+
+       
+"""

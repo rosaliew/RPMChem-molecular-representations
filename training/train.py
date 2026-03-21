@@ -211,23 +211,47 @@ def train(
     with open(f"{model_dir}/config.json", "r", encoding="utf-8") as f:
         model_config = json.load(f)
 
-    # load our datasets (when I refactor again later I would probably have this as a param into train. This is mainly because when we do things like adversarial splits, I will want to be able to call train repeatedly from a different script).
-    train_ds = JSONLDataset(
+    if valid_jsonl == "split_from_train": # method so that it does a split from the train set instead at run time 
+
+        train_ds = JSONLDataset(
         train_jsonl, 
         tokenizer,
         max_length=max_seq_len,
         apply_chat_template=apply_chat_template,
         mask_prompt=mask_prompt,
         system_prompt=system_prompt,
-    )
-    valid_ds = JSONLDataset(
-        valid_jsonl,
+        split_prop=0.1765, # 17.65% of the original 85% (train) constitutes a final 70,15,15 split
+        set_type = "train"
+        )
+
+        valid_ds = JSONLDataset(
+            train_jsonl,
+            tokenizer,
+            max_length=max_seq_len,
+            apply_chat_template=apply_chat_template,
+            mask_prompt=mask_prompt,
+            system_prompt=system_prompt,
+            split_prop = 0.1765, # 17.65% of the original 85% (train) constitutes a final 70,15,15 split
+            set_type = "valid"
+        )
+    else:
+        train_ds = JSONLDataset(
+        train_jsonl, 
         tokenizer,
         max_length=max_seq_len,
         apply_chat_template=apply_chat_template,
         mask_prompt=mask_prompt,
         system_prompt=system_prompt,
-    )
+        )
+
+        valid_ds = JSONLDataset(
+            valid_jsonl,
+            tokenizer,
+            max_length=max_seq_len,
+            apply_chat_template=apply_chat_template,
+            mask_prompt=mask_prompt,
+            system_prompt=system_prompt,
+        )
 
     # I tried to make this as similar to pytorch as possible.
 
@@ -390,8 +414,8 @@ def train(
 if __name__ == "__main__":
     train(
         model_dir="mlx-community/Meta-Llama-3.1-8B-Instruct-4bit",
-        train_jsonl="/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/train_IMPUTED.jsonl",
-        valid_jsonl="/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/valid_IMPUTED.jsonl",
+        train_jsonl="/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run_with_txt_name/train_noimpute_mega_joined_3txt_with_textbook_ids.jsonl",
+        valid_jsonl="split_from_train",
         save_dir="adapters_manual",
         max_seq_len=5000,
         batch_size=1,

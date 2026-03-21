@@ -47,6 +47,8 @@ class Combiner:
         with open(self.output_json_path, 'w') as f:
             combined_df.to_json(f, orient='records', lines=True)
 
+        return self.output_json_path
+
         
 
 if __name__ == "__main__":

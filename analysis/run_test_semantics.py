@@ -268,6 +268,39 @@ if __name__ == "__main__":
     mc.save_results()
 
 
+
+"""
+Just the code here
+Final summary
+                 metric   mean    std
+  bert_precision_model1 0.5088 0.0967
+  bert_precision_model2 0.6297 0.1216
+     bert_recall_model1 0.6238 0.0863
+     bert_recall_model2 0.5718 0.1366
+         bert_f1_model1 0.5565 0.0846
+         bert_f1_model2 0.5921 0.1174
+rougeL_precision_model1 0.0993 0.0859
+rougeL_precision_model2 0.3835 0.2857
+   rougeL_recall_model1 0.4913 0.2255
+   rougeL_recall_model2 0.2384 0.2351
+       rougeL_f1_model1 0.1428 0.1015
+       rougeL_f1_model2 0.2107 0.1839
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """ Skipped 80 but 122/288 with thresh - getting rid of thresh next (set to like np.inf) and running overnight
 #WAS 0.15 THRESH
 ]                 metric   mean    std
