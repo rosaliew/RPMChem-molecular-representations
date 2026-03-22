@@ -4,6 +4,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import mlx.core as mx
+import copy
 from rouge_score import rouge_scorer
 import re
 warnings.filterwarnings("ignore", message=".*UNEXPECTED.*") #annoying warnings
@@ -106,6 +107,7 @@ class ModelComparatorSemantics:
             prompt2 = tokenizer2.apply_chat_template(
                 messages2, add_generation_prompt=True
             )
+            
 
             try:
                 from mlx_lm.sample_utils import make_sampler
@@ -125,6 +127,8 @@ class ModelComparatorSemantics:
                     max_tokens=5000,
                     sampler=make_sampler(temp=0.7),
                 )
+
+                orig_text2 = copy.deepcopy(text2)
 
                 try:
                     text2 = text2.split("Solution:\n", 1)[1]
@@ -161,7 +165,6 @@ class ModelComparatorSemantics:
                 self.all_ground_truth_completions.append(completion)
                 self.all_model1_completions.append(text1)
                 self.all_model2_completions.append(text2)
-
 
 
                 r_scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
@@ -253,7 +256,7 @@ class ModelComparatorSemantics:
         df['rougeL_f1_model1'] = self.rougeL_f1_model1
         df['rougeL_f1_model2'] = self.rougeL_f1_model2
 
-        ###df.to_csv("analysis/results/semantics_comparison.csv")
+        ##df.to_csv("analysis/results/semantics_comparison_new.csv")
 
         return True
     
@@ -263,7 +266,7 @@ class ModelComparatorSemantics:
 if __name__ == "__main__":
     mc = ModelComparatorSemantics(dataset_dir = "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/valid_IMPUTED.jsonl")
     m1 = "/Users/michaelmurray/.lmstudio/models/personal/8b_noLora"
-    m2 = "/Users/michaelmurray/.lmstudio/models/personal/fuse_model_8b_qlora_manual_NEW"
+    m2 = "/Users/michaelmurray/.lmstudio/models/personal/fuse_model_8b_qlora_manual_TEST"
     mc.compare(m1,m2)
     mc.save_results()
 

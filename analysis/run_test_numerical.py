@@ -4,7 +4,7 @@ import mlx.core as mx
 from mlx_lm import load, generate
 from mlx_lm.sample_utils import make_sampler
 import sys
-
+import copy
 sys.path.append("/Users/michaelmurray/Documents/GitHub/RPMChem/preprocessing")
 
 from extract_numerical_subset import NumberExtractor
@@ -158,6 +158,8 @@ class ModelComparatorNumerical: # class to compare models (this is a misnomer no
                 except:
                     text2 = ""
 
+
+                full_text2_response = copy.deepcopy(text2)
             
                 try:
                     text2 = text2.split("Solution:\n", 1)[1] # force model to use soln if it doesnt abide by the format (this never happens anymore)
