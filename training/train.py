@@ -1,9 +1,12 @@
+import copy
 import itertools
 import json
+import math
 import os
 import pickle
 import shutil
 from uuid import uuid4
+from early_stopper import EarlyStopper
 
 import matplotlib.pyplot as plt
 import mlx.core as mx
@@ -70,7 +73,6 @@ def convert_batch_to_dct(batch):
     return {
         "input_ids": mx.array(batch["input_ids"]),
         "labels": mx.array(batch["labels"])}
-
 
 def build_adapter_config( # most args are self explanatory. For example, eval_batches is how many batches we use during an eval call (so batch size * eval_batches many samples). This function converts the args into a dict form so that we can later seralize it into a json. 
     model_dir,
@@ -350,6 +352,8 @@ def train(
 
     train_iter = itertools.cycle(train_loader)
 
+    es = EarlyStopper(patience=5)
+
     for step in range(iters):
         batch = convert_batch_to_dct(next(train_iter))
         loss, grads = loss_and_grad(model, batch) # same as loss = cost(*) then loss.backward()
@@ -364,12 +368,12 @@ def train(
             print(msg)
             log_file.write(msg + "\n")
             log_file.flush()
-
+ 
         if step % 30 == 0:
             train_steps.append(step)
             train_losses.append(loss.item())
 
-        if step % eval_every == 0 and step != 0: 
+        if (step % eval_every == 0 and step != 0) or step == 2: # just want some kind of initial val loss too  
             try:
                 val_loss = evaluate(model, valid_loader, eval_batches)
                 msg = f"step={step} val_loss={val_loss:.6f}"
@@ -383,8 +387,33 @@ def train(
                 plt.plot(valid_steps, valid_losses, label="val")
                 plt.legend()
                 plt.savefig("train_curr_temp") # real time plotting
+
+                status = es(val_loss, curr_model=copy.deepcopy(model))
+                if status[0]: 
+                    print("Early stopping triggered")
+                    best_model = status[1]
+                    final_ckpt = f"{save_dir}/lora_final.safetensors"
+                    save_lora_adapters(best_model, final_ckpt)
+                    save_lora_adapters(best_model, f"{save_dir}/adapters.safetensors")
+
+                    with open(f"{save_dir}/results.pkl", "wb") as f: # saving results that occured during training
+                        pickle.dump(
+                            {
+                                "train_loss": [float(v) for v in train_losses],
+                                "valid_loss": valid_losses,
+                                "epoch_train": train_steps,
+                                "epoch_valid": valid_steps,
+                            },
+                            f,
+                        )
+                    log_file.close()
+                    exit()
+
             except:
                 print(f"stmh failed here")
+
+
+
 
         if step % save_every == 0:
             ckpt = f"{save_dir}/lora_step_{step:07d}.safetensors" # adding zeros so its a consistent form
@@ -414,13 +443,13 @@ def train(
 if __name__ == "__main__":
     train(
         model_dir="mlx-community/Meta-Llama-3.1-8B-Instruct-4bit",
-        train_jsonl="/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run_with_txt_name/train_noimpute_mega_joined_3txt_with_textbook_ids.jsonl",
-        valid_jsonl="split_from_train",
-        save_dir="adapters_manual",
+        train_jsonl="/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/train_IMPUTED.jsonl",
+        valid_jsonl="/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/valid_IMPUTED.jsonl",
+        save_dir="adapters_vx",
         max_seq_len=5000,
         batch_size=1,
-        iters=5000,
-        eval_every=250,
+        iters=10000,
+        eval_every=100,
         eval_batches=125,
         save_every=250,
         apply_chat_template=True,
@@ -434,6 +463,5 @@ if __name__ == "__main__":
         num_layers=-1,
         seed=42,
     )
-
 
 

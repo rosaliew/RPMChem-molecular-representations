@@ -7,8 +7,6 @@ import mlx.core as mx
 import copy
 from rouge_score import rouge_scorer
 import re
-from datetime import datetime
-
 warnings.filterwarnings("ignore", message=".*UNEXPECTED.*") #annoying warnings
 warnings.filterwarnings("ignore", message=".*interactive.*")
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -25,6 +23,22 @@ import json
 
 mx.random.seed(42)
 
+sys_prompt_model1 = """
+You are a textbook solution solver.
+Use this exact output format: "Reasoning:\n<your reasoning>\n\nSolution:\n<your final answer>".
+First provide reasoning, then provide solution in textbook solution-manual style.
+
+You may use the following few shot examples as a guide for how to format your reasoning and solution,
+{"prompt": "Using the Helmholtz energy, demonstrate that the pressure for an ideal polyatomic gas is identical to that derived for an ideal monatomic gas in the text. A = -kT ln Q", "completion": "Reasoning:\n No markdown, no extra sections. Just steps.\n\nWe'll outline: start from Helmholtz free energy A = -kT ln Q, where Q is total partition function for N particles (Q = q^N/N!). Then pressure P = -(∂A/∂V)_T. Show derivative leads to NkT/V. Mention that total molecular partition function factorizes into translational, rotational, vibrational, electronic: q = q_T q_R q_V q_E. Only q_T depends on V (q_T = V / λ^3 where λ is thermal de Broglie wavelength L). Then compute derivative of ln q_T with respect to V gives 1/V. Multiply by NkT yields P = NkT/V = nRT/V.\n\nNeed to keep unit logic explicit: k in J/K, T in K, etc.\n\nLet's craft concise reasoning steps.
+
+Start from the Helmholtz free energy for N indistinguishable molecules  \n\n\\[\nA=-k_{\\mathrm B}T\\ln Q,\\qquad \nQ=\\frac{q^{N}}{N!},\n\\]\n\nwhere \\(q\\) is the molecular partition function.  \nThe pressure follows from the thermodynamic definition  \n\n\\[\nP= -\\left(\\frac{\\partial A}{\\partial V}\\right)_{T}\n   = k_{\\mathrm B}T\\left(\\frac{\\partial \\ln Q}{\\partial V}\\right)_{T}.\n\\]\n\nInsert \\(Q\\):\n\n\\[\n\\ln Q = N\\ln q-\\ln N! \\;\\; \\Longrightarrow\\;\\;\n\\frac{\\partial \\ln Q}{\\partial V}=N\\frac{\\partial \\ln q}{\\partial V},\n\\]\n\nbecause the factorial term is volume‑independent. Hence  \n\n\\[\nP = Nk_{\\mathrm B}T\\left(\\frac{\\partial \\ln q}{\\partial V}\\right)_{T}.\n\\]\n\nFactorize the molecular partition function into independent contributions  \n\n\\[\nq = q_T\\,q_R\\,q_V\\,q_E,\n\\]\n\nwith translational (\\(q_T\\)), rotational (\\(q_R\\)), vibrational (\\(q_V\\)) and electronic (\\(q_E\\)) parts.  \nOnly the translational factor depends on volume; the others are functions of temperature (and internal molecular parameters) alone, so  \n\n\\[\n\\frac{\\partial \\ln q}{\\partial V}\n   =\\frac{\\partial }{\\partial V}\\bigl(\\ln q_T+\\ln q_R+\\ln q_V+\\ln q_E\\bigr)\n   =\\frac{\\partial \\ln q_T}{\\partial V}.\n\\]\n\nFor an ideal gas the translational partition function per molecule is  \n\n\\[\nq_T=\\frac{V}{\\Lambda^{3}},\\qquad \n\\Lambda =\\left(\\frac{h^{2}}{2\\pi m k_{\\mathrm B}T}\\right)^{1/2},\n\\]\n\nso \\(q_T\\propto V\\). Therefore  \n\n\\[\n\\ln q_T = \\ln V - 3\\ln\\Lambda,\\qquad \n\\frac{\\partial \\ln q_T}{\\partial V}= \\frac{1}{V}.\n\\]\n\nSubstituting back,\n\n\\[\nP = Nk_{\\mathrm B}T\\,\\frac{1}{V}\n   = \\frac{N k_{\\mathrm B} T}{V}.\n\\]\n\nRecognising \\(n=N/N_A\\) and \\(R=k_{\\mathrm B}N_A\\),\n\n\\[\nP = \\frac{nRT}{V},\n\\]\n\nwhich is the ideal‑gas pressure expression, identical for polyatomic and monatomic gases.\n\nSolution:\nP = - (dA/dV)_T = kT (d ln Q/dV)_T = NkT (d ln q/dV)_T = NkT (d ln (q_T q_R q_V q_E)/dV)_T = NkT (d/dV (ln q_T + ln q_R + ln q_V + ln q_E))_T Recall that only the translational partition function (q_T) is a function of volume, the other partition functions have no volume dependence. Therefore, only the derivative of the term involving q_T is non-vanishing: P = NkT (d ln q_T/dV)_T = NkT (1/q_T) (d q_T/dV)_T = NkT (1/q_T) (d (V/L^3)/dV)_T = NkT/V = nRT/V"}
+{"prompt": "A 13.0% solution of K2CO3 by mass has a density of 1.09 g/cm3. Calculate the molality of the solution.", "completion": "Reasoning:\nWe need to outline steps: assume 100 g solution, mass K2CO3 =13 g, water=87 g. Moles K2CO3 =13 g / (138.205 g/mol) ≈0.0941 mol. Molality = moles solute per kg solvent =0.0941 mol /0.087 kg =1.08 mol/kg. Density not needed actually but could be used to confirm volume etc. Provide steps.
+
+Take a convenient sample size of the solution, e.g. 100 g.\n\n**Mass of solute and solvent**  \n- Mass of K₂CO₃ = 13 % × 100 g = 13.0 g  \n- Mass of water (solvent) = 100 g – 13 g = 87.0 g  \n\n**Moles of solute**  \nMolar mass of K₂CO₃ = 2(39.10) + 12.01 + 3(16.00) ≈ 138.20 g mol⁻¹  \n\\[\nn_{\\text{K}_2\\text{CO}_3}= \\frac{13.0\\;\\text{g}}{138.20\\;\\text{g mol}^{-1}}\n= 9.41\\times10^{-2}\\;\\text{mol}\n\\]\n\n**Convert solvent mass to kilograms**  \n\\[\nm_{\\text{solvent}} = 87.0\\;\\text{g}=0.0870\\;\\text{kg}\n\\]\n\n**Molality definition**  \n\\[\nb = \\frac{n_{\\text{solute}}}{m_{\\text{solvent}}}\n= \\frac{9.41\\times10^{-2}\\;\\text{mol}}{0.0870\\;\\text{kg}}\n≈ 1.08\\;\\text{mol kg}^{-1}\n\\]\n\n(The given density (1.09 g cm⁻³) is not required for the molality calculation.)\n\nSolution:\n1.08 mol kg^-1"}
+{"prompt": "The singlet state of helium is described by the wave function Ψ = (1/√2)[ψ_1(1)ψ_2(2) + ψ_1(2)ψ_2(1)], where ψ_1 and ψ_2 are the spatial parts of the wave functions. The energy expectation value for this state is given by E_singlet = <Ψ|H|Ψ>. The Hamiltonian H consists of the kinetic energy operators for each electron and the electron-electron repulsion term. The total Hamiltonian H = H_1 + H_2 + V_e-e. The potential energy due to electron-electron repulsion is V_e-e = e^2/(4πε_0|r_1 - r_2|). For the singlet state of helium, the spatial wave functions are ψ_1 = 1s and ψ_2 = 2s. The total energy is calculated as E_singlet = ∫∫ Ψ*(1,2)HΨ(1,2)dr_1dr_2. Letting the operators act on the following wave function gives E_singlet = (1/2)∫∫[1s(1)2s(2) + 2s(1)1s(2)][E_1s(1)2s(2) + E_2s(1)1s(2)]dr_1dr_2 + (1/2)∫∫[1s(1)2s(2) + 2s(1)1s(2)][e^2/(4πε_0|r_1 - r_2|)][1s(1)2s(2) + 2s(1)1s(2)]dr_1dr_2. Expanding the previous expression gives E_singlet = (1/2)E_1s∫∫[1s(1)2s(2) + 2s(1)1s(2)][1s(1)2s(2)]dr_1dr_2 + (1/2)E_2s∫∫[1s(1)2s(2) + 2s(1)1s(2)][2s(1)1s(2)]dr_1dr_2 + (1/2)∫∫[1s(1)2s(2) + 2s(1)1s(2)][e^2/(4πε_0|r_1 - r_2|)][1s(1)2s(2) + 2s(1)1s(2)]dr_1dr_2. Each of the first four integrals of the previous expression can be expanded into the sum of two integrals. For example, (1/2)E_1s∫∫[1s(1)2s(2) + 2s(1)1s(2)][1s(1)2s(2)]dr_1dr_2 = (1/2)E_1s∫∫[1s(1)2s(2)][1s(1)2s(2)]dr_1dr_2 + (1/2)E_1s∫∫[2s(1)1s(2)][1s(1)2s(2)]dr_1dr_2. Because the orbitals are orthogonal and normalized, the first integral has the value one, and the second has the value zero. Therefore, the previous expression can be simplified to E_singlet = E_1s + E_2s + (1/2)∫∫[1s(1)2s(2) + 2s(1)1s(2)][e^2/(4πε_0|r_1 - r_2|)][1s(1)2s(2) + 2s(1)1s(2)]dr_1dr_2. This is the desired result.", "completion": "Reasoning:\n Should outline: define wavefunction, expectation value, expand Hamiltonian terms, use orthonormality, simplify integrals, get result.\n\nProvide equations and logic. No final answer section, just reasoning steps. Ensure explicit equations. No markdown fences.
+
+Start with the singlet spatial wave function for two‑electron He  \n\n\\[\n\\Psi(1,2)=\\frac{1}{\\sqrt 2}\\big[\\psi_{1s}(1)\\psi_{2s}(2)+\\psi_{2s}(1)\\psi_{1s}(2)\\big].\n\\]\n\nThe energy expectation value is  \n\n\\[\nE_{\\text{singlet}}=\\langle \\Psi|H|\\Psi\\rangle\n               =\\int\\!\\!\\int \\Psi^{*}(1,2)\\,H\\,\\Psi(1,2)\\;d\\tau_{1}\\,d\\tau_{2},\n\\]\n\nwith the Hamiltonian  \n\n\\[\nH=H_{1}+H_{2}+V_{e-e},\\qquad \nV_{e-e}= \\frac{e^{2}}{4\\pi\\varepsilon_{0}|{\\bf r}_{1}-{\\bf r}_{2}|}.\n\\]\n\nBecause each one‑electron Hamiltonian \\(H_i\\) acts only on the coordinates of electron \\(i\\),\n\n\\[\nH_{1}\\psi_{a}(1)\\psi_{b}(2)=E_{a}\\,\\psi_{a}(1)\\psi_{b}(2),\\qquad\nH_{2}\\psi_{a}(1)\\psi_{b}(2)=E_{b}\\,\\psi_{a}(1)\\psi_{b}(2),\n\\]\n\nwhere \\(E_{a},E_{b}\\) are the one‑electron orbital energies (here \\(a,b=1s,2s\\)).  \n\nInsert \\(\\Psi\\) and let the operators act:\n\n\\[\n\\begin{aligned}\nE_{\\text{singlet}}&=\\frac12\\!\\int\\!\\!\\int\n   [\\psi_{1s}(1)\\psi_{2s}(2)+\\psi_{2s}(1)\\psi_{1s}(2)]\\\\\n &\\qquad\\times\\big[\\,E_{1s}\\,\\psi_{1s}(1)\\psi_{2s}(2)\n                     +E_{2s}\\,\\psi_{2s}(1)\\psi_{1s}(2) \\\\\n &\\qquad\\quad+ V_{e-e}\\,[\\psi_{1s}(1)\\psi_{2s}(2)+\\psi_{2s}(1)\\psi_{1s}(2)]\\big]\n   \\;d\\tau_{1}d\\tau_{2}.\n\\end{aligned}\n\\]\n\nSeparate the kinetic‑energy contributions from the electron‑repulsion term:\n\n\\[\nE_{\\text{singlet}}=\n\\frac12 E_{1s}\\!\\int\\!\\!\\int[\\psi_{1s}(1)\\psi_{2s}(2)+\\psi_{2s}(1)\\psi_{1s}(2)]\n                               \\,\\psi_{1s}(1)\\psi_{2s}(2)\\,d\\tau_{1}d\\tau_{2}\n+\\frac12 E_{2s}\\!\\int\\!\\!\\int[\\psi_{1s}(1)\\psi_{2s}(2)+\\psi_{2s}(1)\\psi_{1s}(2)]\n                               \\,\\psi_{2s}(1)\\psi_{1s}(2)\\,d\\tau_{1}d\\tau_{2}\n+\\frac12\\!\\int\\!\\!\\int[\\psi_{1s}(1)\\psi_{2s}(2)+\\psi_{2s}(1)\\psi_{1s}(2)]\\\\\n\\qquad\\times V_{e-e}\\,[\\psi_{1s}(1)\\psi_{2s}(2)+\\psi_{2s}(1)\\psi_{1s}(2)]\n   \\;d\\tau_{1}d\\tau_{2}.\n\\]\n\nEach of the first two double integrals expands into two terms.  For example,\n\n\\[\n\\frac12E_{1s}\\!\\int\\!\\!\\int\n   [\\psi_{1s}(1)\\psi_{2s}(2)]\\,\\psi_{1s}(1)\\psi_{2s}(2)\n   +\\frac12E_{1s}\\!\\int\\!\\!\\int\n   [\\psi_{2s}(1)\\psi_{1s}(2)]\\,\\psi_{1s}(1)\\psi_{2s}(2).\n\\]\n\nBecause the orbitals are orthonormal,\n\n\\[\n\\int\n\nSolution:\nE_singlet = E_1s + E_2s + (1/2)∫∫[1s(1)2s(2) + 2s(1)1s(2)][e^2/(4πε_0|r_1 - r_2|)][1s(1)2s(2) + 2s(1)1s(2)]dr_1dr_2. This is the desired result."}
+"""
 
 class ModelComparatorSemantics:
     def __init__(self, dataset_dir = "datasets/processed/valid.jsonl", model_type = "allenai/scibert_scivocab_uncased"):
@@ -91,8 +105,8 @@ class ModelComparatorSemantics:
 
         for i,set in enumerate(tqdm(self.dataset)):
 
-
             messages_1 = [
+                {"role": "system", "content": sys_prompt_model1},
                 {"role": "user", "content": set['prompt']},
             ]
 
@@ -122,7 +136,6 @@ class ModelComparatorSemantics:
                     sampler=make_sampler(temp=0.6),
                 )
                 
-
                 text2 = generate(
                     model_2,
                     tokenizer2,
@@ -131,9 +144,9 @@ class ModelComparatorSemantics:
                     max_tokens=5000,
                     sampler=make_sampler(temp=0.6),
                 )
-    
+                
                 orig_text2 = copy.deepcopy(text2)
-
+                
                 text2 = text2.split("Solution:\n", 1)[1]
 
                 completion = set['completion'].split("Solution:\n")[1]
@@ -243,12 +256,7 @@ class ModelComparatorSemantics:
         df['rougeL_f1_model1'] = self.rougeL_f1_model1
         df['rougeL_f1_model2'] = self.rougeL_f1_model2
 
-        df.to_csv(f"analysis/results/semantics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", index=False)
-
-        #df.to_csv("analysis/results/regular_precisio_n_float16.csv")
-        #df.to_csv("analysis/results/semantics_comparison_3xt_with_prompt.csv")
-        #df.to_csv("analysis/results/semantics_gemma_comp.csv")
-        #df.to_csv("chemdfm.csv")
+        df.to_csv(f"analysis/results/semantics_compare_to_fewshot_pe_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", index=False)
 
         return True
     
@@ -257,8 +265,8 @@ class ModelComparatorSemantics:
 
 if __name__ == "__main__":
     mc = ModelComparatorSemantics(dataset_dir = "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/valid_IMPUTED.jsonl")
-    m1 = "/Users/michaelmurray/.lmstudio/models/personal/8b_nolora"
+    m1 = "/Users/michaelmurray/.lmstudio/models/personal/8b_noLora"
     m2 = "/Users/michaelmurray/.lmstudio/models/submission/fuse_model_8b_qlora_manual_NEW_prompt"
-    #m2 = "/Users/michaelmurray/.lmstudio/models/introvoyz041/ChemDFM-v2.0-14B-mlx-4Bit"
     mc.compare(m1,m2)
     mc.save_results()
+
