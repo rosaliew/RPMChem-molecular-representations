@@ -1,12 +1,16 @@
 ## Compare vanilla LLM to the fine-tuned LLM
 
+import argparse
 import warnings
 import numpy as np
 import pandas as pd
 import mlx.core as mx
 import copy
+import os
 from rouge_score import rouge_scorer
 import re
+from datetime import datetime
+
 warnings.filterwarnings("ignore", message=".*UNEXPECTED.*") #annoying warnings
 warnings.filterwarnings("ignore", message=".*interactive.*")
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -89,12 +93,12 @@ class ModelComparatorSemantics:
 
         for i,set in enumerate(tqdm(self.dataset)):
 
+
             messages_1 = [
-                {"role": "user", "content": set['prompt']}
+                {"role": "user", "content": set['prompt']},
             ]
 
             messages2 = [
-                {"role": "system", "content": "Reasoning:\n"}, # to fit the training template
                 {"role": "user", "content": set['prompt']},
             ]
             
@@ -113,42 +117,27 @@ class ModelComparatorSemantics:
                 from mlx_lm.sample_utils import make_sampler
                 text1 = generate(
                     model_1,
-                    tokenizer2,
+                    tokenizer1,
                     prompt=prompt1,
                     verbose=False,
                     max_tokens=5000,
-                    sampler=make_sampler(temp=0.7),
+                    sampler=make_sampler(temp=0.6),
                 )
+                
+
                 text2 = generate(
                     model_2,
                     tokenizer2,
                     prompt=prompt2,
                     verbose=False,
                     max_tokens=5000,
-                    sampler=make_sampler(temp=0.7),
+                    sampler=make_sampler(temp=0.6),
                 )
-
+    
                 orig_text2 = copy.deepcopy(text2)
 
-                try:
-                    text2 = text2.split("Solution:\n", 1)[1]
-                except Exception: # Alternatively we can later try jsut adding the prompt to reason then solution as this worked fine in LMStudio
-                    if isinstance(prompt2, str):
-                        prompt2_text = prompt2
-                    else:
-                        prompt2_text = tokenizer2.decode(prompt2)
-                    recovery_prompt = prompt2_text + text2.rstrip() + "\n\nSolution:\n"
-                    recovery_completion = generate(
-                        model_2,
-                        tokenizer2,
-                        prompt=recovery_prompt,
-                        verbose=False,
-                        max_tokens=1000,
-                        sampler=make_sampler(temp=0.7),
-                    )
-                    recovered_text2 = text2.rstrip() + "\n\nSolution:\n" + recovery_completion.lstrip()
-                    text2 = recovered_text2.split("Solution:\n", 1)[1]
-                #text1 = text1.split("Solution:\n")[1]
+                text2 = text2.split("Solution:\n", 1)[1]
+
                 completion = set['completion'].split("Solution:\n")[1]
 
                 bert_p1, bert_r1, bert_f1_1 = score([text1], [completion], model_type=self.model_type, device='cpu')
@@ -178,7 +167,7 @@ class ModelComparatorSemantics:
                 rougeL_f1_model1.append(rouge1.fmeasure)
                 rougeL_f1_model2.append(rouge2.fmeasure)
                 
-                print(self._summary_df(progress_metrics).to_string(index=False, float_format=lambda x: f"{x:.4f}"))
+                print(self._summary_df(progress_metrics).to_string())
 
             except Exception as e:
                 print(f"Failed on sample {i}: {e}")
@@ -199,7 +188,7 @@ class ModelComparatorSemantics:
                     "rougeL_f1_model2": rougeL_f1_model2,
                 }
                 print(f"\nProgress summary at sample {i}")
-                print(self._summary_df(progress_metrics).to_string(index=False, float_format=lambda x: f"{x:.4f}"))
+                print(self._summary_df(progress_metrics).to_string())
 
 
         final_metrics = {
@@ -218,7 +207,7 @@ class ModelComparatorSemantics:
         }
 
         print("\nFinal summary")
-        print(self._summary_df(final_metrics).to_string(index=False, float_format=lambda x: f"{x:.4f}"))
+        print(self._summary_df(progress_metrics).to_string())
 
         self.bert_precision_model1 = bert_precision_model1
         self.bert_precision_model2 = bert_precision_model2
@@ -256,7 +245,12 @@ class ModelComparatorSemantics:
         df['rougeL_f1_model1'] = self.rougeL_f1_model1
         df['rougeL_f1_model2'] = self.rougeL_f1_model2
 
-        ##df.to_csv("analysis/results/semantics_comparison_new.csv")
+        df.to_csv(f"analysis/results/semantics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", index=False)
+
+        #df.to_csv("analysis/results/regular_precisio_n_float16.csv")
+        #df.to_csv("analysis/results/semantics_comparison_3xt_with_prompt.csv")
+        #df.to_csv("analysis/results/semantics_gemma_comp.csv")
+        #df.to_csv("chemdfm.csv")
 
         return True
     
@@ -264,110 +258,26 @@ class ModelComparatorSemantics:
 
 
 if __name__ == "__main__":
-    mc = ModelComparatorSemantics(dataset_dir = "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/valid_IMPUTED.jsonl")
-    m1 = "/Users/michaelmurray/.lmstudio/models/personal/8b_noLora"
-    m2 = "/Users/michaelmurray/.lmstudio/models/personal/fuse_model_8b_qlora_manual_TEST"
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset_dir",
+        default="datasets/current_to_run/valid_IMPUTED.jsonl",
+    )
+    parser.add_argument(
+        "--model_1",
+        default="~/.lmstudio/models/personal/8b_nolora",
+    )
+    parser.add_argument(
+        "--model_2",
+        default="~/.lmstudio/models/submission/fuse_model_8b_qlora_manual_NEW_prompt",
+    )
+    args = parser.parse_args()
+
+    dataset_dir = os.path.expanduser(args.dataset_dir)
+    m1 = os.path.expanduser(args.model_1)
+    m2 = os.path.expanduser(args.model_2)
+
+    mc = ModelComparatorSemantics(dataset_dir=dataset_dir)
+    #m2 = "/Users/michaelmurray/.lmstudio/models/introvoyz041/ChemDFM-v2.0-14B-mlx-4Bit"
     mc.compare(m1,m2)
     mc.save_results()
-
-
-
-"""
-Just the code here
-Final summary
-                 metric   mean    std
-  bert_precision_model1 0.5088 0.0967
-  bert_precision_model2 0.6297 0.1216
-     bert_recall_model1 0.6238 0.0863
-     bert_recall_model2 0.5718 0.1366
-         bert_f1_model1 0.5565 0.0846
-         bert_f1_model2 0.5921 0.1174
-rougeL_precision_model1 0.0993 0.0859
-rougeL_precision_model2 0.3835 0.2857
-   rougeL_recall_model1 0.4913 0.2255
-   rougeL_recall_model2 0.2384 0.2351
-       rougeL_f1_model1 0.1428 0.1015
-       rougeL_f1_model2 0.2107 0.1839
-"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-""" Skipped 80 but 122/288 with thresh - getting rid of thresh next (set to like np.inf) and running overnight
-#WAS 0.15 THRESH
-]                 metric   mean    std
-  bert_precision_model1 0.5133 0.0893
-  bert_precision_model2 0.6138 0.0931
-     bert_recall_model1 0.6335 0.0707
-     bert_recall_model2 0.6069 0.0694
-         bert_f1_model1 0.5634 0.0768
-         bert_f1_model2 0.6051 0.0626
-rougeL_precision_model1 0.0982 0.0631
-rougeL_precision_model2 0.2945 0.2168
-   rougeL_recall_model1 0.5076 0.1935
-   rougeL_recall_model2 0.2605 0.1820
-       rougeL_f1_model1 0.1501 0.0815
-       rougeL_f1_model2 0.2084 0.1047
-"""
-
-""" FULL RUN WITHOUT THRESHHOLDING
-                 metric   mean    std
-  bert_precision_model1 0.5335 0.0826
-  bert_precision_model2 0.6245 0.1082
-     bert_recall_model1 0.6247 0.0812
-     bert_recall_model2 0.5846 0.1146
-         bert_f1_model1 0.5718 0.0738
-         bert_f1_model2 0.5972 0.0972
-rougeL_precision_model1 0.1143 0.0741
-rougeL_precision_model2 0.3569 0.2435
-   rougeL_recall_model1 0.4647 0.1954
-   rougeL_recall_model2 0.2587 0.2038
-       rougeL_f1_model1 0.1635 0.0849
-       rougeL_f1_model2 0.2227 0.1516
-"""
-
-
-""" FULL RUN WITHOUT THRESH BUT GIVING REASONING PROMPT TO VANILLA MODEL (NO REASONING PROMPT TO TRAINED MODEL)
-                metric   mean    std
-  bert_precision_model1 0.5896 0.0953
-  bert_precision_model2 0.6251 0.0941
-     bert_recall_model1 0.6104 0.0940
-     bert_recall_model2 0.5830 0.1091
-         bert_f1_model1 0.5950 0.0821
-         bert_f1_model2 0.5970 0.0874
-rougeL_precision_model1 0.2403 0.1901
-rougeL_precision_model2 0.3508 0.2281
-   rougeL_recall_model1 0.3336 0.2045
-   rougeL_recall_model2 0.2561 0.2009
-       rougeL_f1_model1 0.2148 0.1171
-       rougeL_f1_model2 0.2200 0.1270
-"""
-
-
-""" FULL RUN WITHOUT THRESH WHERE BOTH MODELS GET THE FULL REASONING PROMPT
-Final summary
-                 metric   mean    std
-  bert_precision_model1 0.5877 0.1018
-  bert_precision_model2 0.6222 0.1006
-     bert_recall_model1 0.6097 0.0940
-     bert_recall_model2 0.5817 0.1108
-         bert_f1_model1 0.5938 0.0862
-         bert_f1_model2 0.5952 0.0940
-rougeL_precision_model1 0.2413 0.1960
-rougeL_precision_model2 0.3446 0.2343
-   rougeL_recall_model1 0.3345 0.2076
-   rougeL_recall_model2 0.2490 0.1913
-       rougeL_f1_model1 0.2133 0.1227
-       rougeL_f1_model2 0.2222 0.1443
-"""

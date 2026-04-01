@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 from tqdm import tqdm
 import mlx.core as mx
@@ -5,7 +6,10 @@ from mlx_lm import load, generate
 from mlx_lm.sample_utils import make_sampler
 import sys
 import copy
-sys.path.append("/Users/michaelmurray/Documents/GitHub/RPMChem/preprocessing")
+import os
+from datetime import datetime
+
+sys.path.append("preprocessing")
 
 from extract_numerical_subset import NumberExtractor
 
@@ -140,8 +144,8 @@ class ModelComparatorNumerical: # class to compare models (this is a misnomer no
                         tokenizer1,
                         prompt=prompt1,
                         verbose=False,
-                        max_tokens=5000,
-                        sampler=make_sampler(temp=1),
+                        max_tokens=10000,
+                        sampler=make_sampler(temp=0.6),
                     )
                 except:
                     text1 = ""
@@ -152,8 +156,8 @@ class ModelComparatorNumerical: # class to compare models (this is a misnomer no
                         tokenizer2,
                         prompt=prompt2,
                         verbose=False,
-                        max_tokens=5000,
-                        sampler=make_sampler(temp=1),
+                        max_tokens=10000,
+                        sampler=make_sampler(temp=0.6),
                     )
                 except:
                     text2 = ""
@@ -161,24 +165,7 @@ class ModelComparatorNumerical: # class to compare models (this is a misnomer no
 
                 full_text2_response = copy.deepcopy(text2)
             
-                try:
-                    text2 = text2.split("Solution:\n", 1)[1] # force model to use soln if it doesnt abide by the format (this never happens anymore)
-                except Exception:
-                    if isinstance(prompt2, str):
-                        prompt2_text = prompt2
-                    else:
-                        prompt2_text = tokenizer2.decode(prompt2)
-                    recovery_prompt2 = prompt2_text + text2.rstrip() + "\n\nSolution:\n"
-                    recovery_completion2 = generate(
-                        model_2,
-                        tokenizer2,
-                        prompt=recovery_prompt2,
-                        verbose=False,
-                        max_tokens=1000,
-                        sampler=make_sampler(temp=0.4),
-                    )
-                    recovered_text2 = text2.rstrip() + "\n\nSolution:\n" + recovery_completion2.lstrip() # grab the solution part (dont care about reasoning currently)
-                    text2 = recovered_text2.split("Solution:\n", 1)[1]
+                text2 = text2.split("Solution:\n", 1)[1] 
 
                 try:
                     text1_value_raw, text1_unit_raw = extract_final_ans(word_prompt, text1)
@@ -239,13 +226,28 @@ class ModelComparatorNumerical: # class to compare models (this is a misnomer no
         df["model2_converted_value"] = self.model2_values_converted
         df["model2_ans"] = self.model2_ans
 
-        #df.to_csv("analysis/results/numerical_comparison_3txt_noignoreunits_train2txt_apply3txt.csv")
-        df.to_csv("analysis/results/temp.csv")
+        df.to_csv(f"analysis/results/numerical_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", index=False)
     
 if __name__ == "__main__":
-    MCN = ModelComparatorNumerical("/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/numerical_prompts_real/validation.csv")
-    m1 = "/Users/michaelmurray/.lmstudio/models/personal/8b_noLora"
-    m2 = "/Users/michaelmurray/.lmstudio/models/personal/fuse_model_8b_qlora_manual_NEW"
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset_dir",
+        default="datasets/numerical_prompts_real/validation.csv",
+    )
+    parser.add_argument(
+        "--model_1",
+        default="~/.lmstudio/models/personal/8b_noLora",
+    )
+    parser.add_argument(
+        "--model_2",
+        default="~/.lmstudio/models/submission/fuse_model_8b_qlora_manual_NEW_prompt",
+    )
+    args = parser.parse_args()
+
+    dataset_dir = os.path.expanduser(args.dataset_dir)
+    m1 = os.path.expanduser(args.model_1)
+    m2 = os.path.expanduser(args.model_2)
+
+    MCN = ModelComparatorNumerical(dataset_dir)
     MCN.compare(m1, m2)
     MCN.save_results()
-

@@ -28,7 +28,7 @@ Rules:
 
 Do not include any explanation or extra text."""
 
-    def __init__(self, file_dir = None, model_dir = "openai/gpt-oss-120b"):
+    def __init__(self, file_dir = None, model_dir = "openai/gpt-oss-120b", output_csv = "datasets/numerical_prompts_real/validation_units_new.csv"):
         self.model = lms.llm(model_dir)
         self.all_preds = []
         self.all_samples = []
@@ -36,6 +36,7 @@ Do not include any explanation or extra text."""
         self.all_values = []
         self.all_units = []
         self.file_dir = file_dir
+        self.output_csv = output_csv
 
     @staticmethod
     def convert_to_float(output):
@@ -131,7 +132,7 @@ Do not include any explanation or extra text."""
         df["all_pred"] = self.all_values
         df["all_pred_value"] = self.all_values
         df["all_pred_unit"] = [u if u is not None else "NA" for u in self.all_units]
-        df.to_csv("datasets/numerical_prompts_real/validation_units_new.csv")
+        df.to_csv(self.output_csv)
 
 if __name__ == "__main__":
     NumberExtractor("/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/current_to_run/valid_noimpute.jsonl").run_all()
