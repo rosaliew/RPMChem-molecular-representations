@@ -4,8 +4,6 @@
 *.json
 *.log
 *.safetensors
-todos.md
-fair_testing.md
 *.png
 *.pkl
 *.json
