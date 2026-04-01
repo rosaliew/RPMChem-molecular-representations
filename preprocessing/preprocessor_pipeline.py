@@ -5,11 +5,12 @@
 import uuid
 import time
 from pathlib import Path
-from preprocessing.get_jsons_disjoint_textbook import PdfExtractor, extract_items_from_pdf, should_scan_pdf1_page, prompt_pdf1_questions, prompt_pdf2_answers
+from get_jsons_disjoint_textbook import PdfExtractor, extract_items_from_pdf, should_scan_pdf1_page, prompt_pdf1_questions, prompt_pdf2_answers
 from combine_jsons_disjoint import Combiner
 from combine_textbooks import TextbookCombiner
 from re_process_real import ReprocessorReal
 from add_reasoning_context import SplitProcessor
+from extract_numerical_subset import NumberExtractor
 
 class Preprocessor:
     def __init__(self, pdfs_to_process : list[tuple[str]], impute : bool = True):
@@ -68,6 +69,10 @@ class Preprocessor:
             sp.process_split(Path(train_string), Path(train_string.replace(".jsonl", "_reasoning.jsonl")))
             sp.process_split(Path(test_string), Path(test_string.replace(".jsonl", "_reasoning.jsonl")))
 
+        numerical_output = str(Path(test_string).with_suffix("")) + "_numerical_prompts.csv"
+        ne = NumberExtractor(test_string, output_csv=numerical_output)
+        ne.run_all()
+
         time.sleep(5)
 
 
@@ -79,7 +84,7 @@ if __name__ == "__main__":
         
         ("/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/pdfs/Atkins_ Physical Chemistry 11e.pdf", "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/pdfs/Solutions Manual - Atkins Physical Chemistry 11th Ed.pdf"),
 
-        # I dont have the flower textbook, need to ask paola
+        ("/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/raw/Chemistry2e-Flowers.pdf", "/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/raw/Chemistry2e-Flowers.pdf"),
     
     ]
 
