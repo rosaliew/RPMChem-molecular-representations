@@ -6,7 +6,6 @@ from mlx_lm.sample_utils import make_sampler
 import sys
 import copy
 from datetime import datetime
-
 sys.path.append("/Users/michaelmurray/Documents/GitHub/RPMChem/preprocessing")
 
 from extract_numerical_subset import NumberExtractor
@@ -49,6 +48,13 @@ Rules:
 {"value": "<number or NA>"}
 
 Do not include any explanation or extra text."""
+
+sys_prompt_model1 = """
+You are a textbook solution solver.
+Use this exact output format: "Reasoning:\n<your reasoning>\n\nSolution:\n<your final answer>".
+First provide reasoning, then provide solution in textbook solution-manual style.
+"""
+
 
 def extract_final_ans(question, answer): # grab final answer
     extraction_input = f"Question:\n{question}\n\nAnswer:\n{answer}"
@@ -124,14 +130,21 @@ class ModelComparatorNumerical: # class to compare models (this is a misnomer no
                 ground_truth = float(curr_row['all_pred'])
                 ground_truth_unit = normalize_unit_text(curr_row["all_pred_unit"])
 
-                messages1 = [{"role": "user", "content": word_prompt}]
+                
+                messages_1 = [
+                {"role": "system", "content": sys_prompt_model1},
+                {"role": "user", "content": word_prompt},
+                #{"role": "user", "content": top_rag}
+                ]
+
                 messages2 = [
                     {"role": "user", "content": word_prompt},
                 ]
 
                 prompt1 = tokenizer1.apply_chat_template(
-                    messages1, add_generation_prompt=True
+                    messages_1, add_generation_prompt=True
                 )
+
                 prompt2 = tokenizer2.apply_chat_template(
                     messages2, add_generation_prompt=True
                 )
@@ -162,8 +175,8 @@ class ModelComparatorNumerical: # class to compare models (this is a misnomer no
 
 
                 full_text2_response = copy.deepcopy(text2)
-            
-                text2 = text2.split("Solution:\n", 1)[1] 
+
+                text2 = text2.split("Solution:\n", 1)[1]
 
                 try:
                     text1_value_raw, text1_unit_raw = extract_final_ans(word_prompt, text1)
@@ -224,7 +237,7 @@ class ModelComparatorNumerical: # class to compare models (this is a misnomer no
         df["model2_converted_value"] = self.model2_values_converted
         df["model2_ans"] = self.model2_ans
 
-        df.to_csv(f"analysis/results/numerical_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", index=False)
+        df.to_csv(f"analysis/results/numerical_pe_cot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", index=False)
     
 if __name__ == "__main__":
     MCN = ModelComparatorNumerical("/Users/michaelmurray/Documents/GitHub/RPMChem/datasets/numerical_prompts_real/validation.csv")
